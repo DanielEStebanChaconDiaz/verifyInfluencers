@@ -40,33 +40,125 @@ const ResearchDashboard = () => {
     const handleStartResearch = async () => {
         setIsAnalyzing(true);
         try {
-            // Obtener y analizar tweets
-            const analysisResponse = await axios.get(`http://localhost:3000/analyze/twitter/${influencerName}`);
+            const response = await axios.post('http://localhost:3000/api/analyze/twitter', {
+                influencerName,
+                selectedTimeRange,
+                claimsCount,
+                productsCount,
+                includeRevenue,
+                verifyJournals,
+                selectedJournals: Array.from(selectedJournals),
+                notes
+            });
             
-            // Verificar cada afirmación
-            const claims = analysisResponse.data.claims;
-            const verificationPromises = claims.map(claim => 
-                axios.post('http://localhost:3000/verify/claim', { claimId: claim.id })
-            );
-            
-            const verificationResults = await Promise.all(verificationPromises);
-            
-            // Procesar los resultados
-            const processedResults = {
-                influencer: analysisResponse.data.influencer,
-                claims: claims.map((claim, index) => ({
-                    ...claim,
-                    ...verificationResults[index].data
-                }))
-            };
-            
-            setAnalysisResults(processedResults);
+            setAnalysisResults(response.data);
         } catch (error) {
-            console.error('Error en la investigación:', error);
-            // Aquí podrías mostrar un mensaje de error al usuario
+            console.error('Error in research:', error);
+            // You could add a toast notification here
         } finally {
             setIsAnalyzing(false);
         }
+    };
+    
+    // Add this component to display the results
+    const AnalysisResults = ({ results, onClose }) => {
+        return (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-6 overflow-auto">
+                <div className="bg-gray-800 rounded-lg p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                    <div className="flex justify-between items-center mb-6">
+                        <h2 className="text-xl font-bold">Analysis Results</h2>
+                        <button onClick={onClose} className="text-gray-400 hover:text-white">
+                            ✕
+                        </button>
+                    </div>
+    
+                    {/* Profile Information */}
+                    <div className="mb-6 flex items-center gap-4">
+                        <img 
+                            src={results.profile.profileImage} 
+                            alt={results.profile.name}
+                            className="w-16 h-16 rounded-full"
+                        />
+                        <div>
+                            <h3 className="font-bold">{results.profile.name}</h3>
+                            <p className="text-gray-400">@{results.profile.username}</p>
+                            <p className="text-sm">{results.profile.description}</p>
+                            <p className="text-sm text-gray-400">
+                                {results.profile.followers.toLocaleString()} followers · 
+                                {results.profile.following.toLocaleString()} following
+                            </p>
+                        </div>
+                    </div>
+    
+                    {/* Claims Analysis */}
+                    <div className="mb-6">
+                        <h3 className="font-bold mb-3">Health Claims Analysis</h3>
+                        {results.tweets.map((tweet, index) => (
+                            <div key={tweet.id} className="mb-4 bg-gray-700/50 p-4 rounded">
+                                <p className="mb-2">{tweet.text}</p>
+                                <div className="text-sm text-gray-400">
+                                    {new Date(tweet.created_at).toLocaleDateString()} · 
+                                    {tweet.likes} likes · {tweet.retweets} retweets
+                                </div>
+                                
+                                {tweet.claims.length > 0 && (
+                                    <div className="mt-2">
+                                        <h4 className="font-medium mb-2">Claims Detected:</h4>
+                                        {tweet.claims.map((claim, claimIndex) => (
+                                            <div key={claimIndex} className="bg-gray-800/50 p-2 rounded mb-2">
+                                                <p>{claim.text}</p>
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <div className="h-2 bg-gray-700 rounded-full w-24">
+                                                        <div 
+                                                            className="h-2 bg-emerald-400 rounded-full"
+                                                            style={{width: `${claim.confidence}%`}}
+                                                        />
+                                                    </div>
+                                                    <span className="text-sm text-gray-400">
+                                                        {Math.round(claim.confidence)}% confidence
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                                
+                                {tweet.products.length > 0 && (
+                                    <div className="mt-2">
+                                        <h4 className="font-medium mb-2">Products Mentioned:</h4>
+                                        <ul className="list-disc list-inside">
+                                            {tweet.products.map((product, productIndex) => (
+                                                <li key={productIndex} className="text-gray-300">
+                                                    {product}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
+                                
+                                {tweet.revenue && (
+                                    <div className="mt-2">
+                                        <h4 className="font-medium mb-2">Revenue Analysis:</h4>
+                                        <div className="text-sm">
+                                            {tweet.revenue.hasAffiliate && (
+                                                <span className="bg-yellow-600/50 text-yellow-200 px-2 py-1 rounded mr-2">
+                                                    Affiliate
+                                                </span>
+                                            )}
+                                            {tweet.revenue.hasSponsored && (
+                                                <span className="bg-purple-600/50 text-purple-200 px-2 py-1 rounded">
+                                                    Sponsored
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        );
     };
 
     const handleNumberInput = (setter) => (e) => {
