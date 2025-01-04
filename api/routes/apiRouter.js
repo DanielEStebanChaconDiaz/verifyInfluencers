@@ -84,6 +84,7 @@ router.post('/analyze/twitter', async (req, res) => {
                 // Check the date
                 return new Date(tweet.content.itemContent.tweet_results.result.legacy.created_at) > dateThreshold;
             })
+            .slice(0, claimsCount)
             .map(tweet => {
                 const tweetData = tweet.content.itemContent.tweet_results.result.legacy;
                 return {
@@ -145,8 +146,7 @@ function extractHealthClaims(text) {
 }
 
 // Utility function to extract product mentions
-function extractProducts(text) {
-    // Simple pattern matching for product mentions
+function extractProducts(text, limit) {
     const productPatterns = [
         /(?:check out|try|buy|get|available at) ([^.!?]+)/i,
         /(?:link in bio|shop now) for ([^.!?]+)/i,
@@ -158,7 +158,8 @@ function extractProducts(text) {
             const matches = text.match(pattern);
             return matches ? [matches[1].trim()] : [];
         })
-        .filter(Boolean);
+        .filter(Boolean)
+        .slice(0, limit); // Añadir esto para respetar el límite
 }
 
 // Utility function to analyze potential revenue

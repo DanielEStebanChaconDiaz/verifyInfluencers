@@ -1,46 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import InfluencerProfile from './influencerPage';
 import Header from './header';
+import axios from 'axios';
 
 const InfluencerLeaderboard = () => {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [sortOrder, setSortOrder] = useState('Highest First');
   const [selectedInfluencer, setSelectedInfluencer] = useState(null);
-
-  const categories = ['All', 'Nutrition', 'Fitness', 'Medicine', 'Mental Health'];
+  const [influencers, setInfluencers] = useState([]);
   
-  const influencers = [
-    {
-      id: 1,
-      name: 'Dr. Peter Attia',
-      category: 'Medicine',
-      trustScore: 94,
-      trending: true,
-      followers: '1.2M+',
-      claims: 203,
-      avatar: '/api/placeholder/40/40',
-      bio: 'Leading expert in longevity medicine and performance optimization.',
-      expertise: ['Longevity', 'Performance', 'Nutrition', 'Exercise Science'],
-      yearlyRevenue: '$4.8M',
-      products: 3
-    },
-    {
-      id: 4,
-      name: 'Andrew Huberman',
-      category: 'Neuroscience',
-      trustScore: 89,
-      trending: true,
-      followers: '4.2M+',
-      claims: 127,
-      avatar: '/api/placeholder/40/40',
-      bio: 'Stanford Professor of Neurobiology and Ophthalmology, focusing on neural development, brain plasticity, and neural regeneration.',
-      expertise: ['Sleep', 'Performance', 'Hormones', 'Stress Management', 'Exercise Science', 'Light Exposure', 'Circadian Biology'],
-      yearlyRevenue: '$5.0M',
-      products: 1
-    },
-    // ... other influencers
-  ];
+  const categories = ['All', 'Nutrition', 'Fitness', 'Medicine', 'Mental Health'];
+
+  // Fetch influencers data on component mount
+  useEffect(() => {
+    const fetchInfluencers = async () => {
+      try {
+        const response = await axios.get('http://localhost:3000/users/hola');  // Ajusta el endpoint según sea necesario
+        setInfluencers(response.data);  // Suponiendo que la API devuelve la lista completa de influencers
+      } catch (error) {
+        console.error("Error fetching influencers:", error.message);
+      }
+    };
+
+    fetchInfluencers();
+  }, []); // Empty dependency array means this effect runs once when the component mounts
 
   if (selectedInfluencer) {
     return (
@@ -56,7 +40,7 @@ const InfluencerLeaderboard = () => {
 
   return (
     <div className="w-full min-h-screen bg-gray-900 text-white p-6">
-        <Header />
+      <Header />
       <h1 className="text-2xl font-bold mb-2">Influencer Trust Leaderboard</h1>
       <p className="text-gray-400 mb-8">
         Real-time rankings of health influencers based on scientific accuracy, credibility, and transparency.

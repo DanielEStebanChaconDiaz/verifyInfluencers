@@ -176,7 +176,7 @@ const ResearchDashboard = () => {
             <Header />
 
             <div className="flex items-center gap-3 mb-6">
-                <a href="#" className="text-emerald-400 flex items-center gap-2">
+                <a href="#/leaderboard" className="text-emerald-400 flex items-center gap-2">
                     <span>←</span>
                     <span>Back to Dashboard</span>
                 </a>
