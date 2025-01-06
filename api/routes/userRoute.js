@@ -64,10 +64,11 @@ router.post("/login", async (req, res) => {
   }
 });
 
+
 router.get('/hola', async (req, res) => {
   try {
     const users = await Influencers.find({ twitter_handle: { $ne: null } });
-
+    
     const transformedData = await Promise.all(users.map(async (user) => {
       const options = {
         method: 'GET',
@@ -90,7 +91,7 @@ router.get('/hola', async (req, res) => {
         const engagementScore = Math.min(30, (twitterData.legacy.statuses_count / twitterData.legacy.followers_count) * 100);
         
         const trustScore = Math.min(100, Math.round(verifiedScore + followersScore + accountAgeScore + engagementScore));
-
+        
         // Calcular si está trending basado en la actividad reciente
         const avgTweetsPerYear = twitterData.legacy.statuses_count / ((new Date() - new Date(twitterData.legacy.created_at)) / (1000 * 60 * 60 * 24 * 365));
         const trending = avgTweetsPerYear > 365; // Más de 1 tweet por día en promedio
@@ -98,14 +99,15 @@ router.get('/hola', async (req, res) => {
         // Formatear seguidores
         const followersM = (twitterData.legacy.followers_count / 1000000).toFixed(1);
         const followers = twitterData.legacy.followers_count > 1000000 ? 
-          `${followersM}M+` : 
+        `${followersM}M+` : 
           `${(twitterData.legacy.followers_count / 1000).toFixed(1)}K+`;
-
+          
         // Calcular claims basado en tweets
         const claims = Math.round(twitterData.legacy.statuses_count * 0.05); // Asumimos que 5% de tweets son claims verificables
 
         return {
           id:twitterData.rest_id,
+          username: user.twitter_handle,
           name: twitterData.legacy.name,
           category: user.category || 'Health & Wellness', // Debe venir de tu base de datos
           trustScore,
@@ -127,7 +129,7 @@ router.get('/hola', async (req, res) => {
 
     const filteredData = transformedData.filter(data => data !== null);
     res.json(filteredData);
-
+    
   } catch (error) {
     console.error('Error:', error.message);
     res.status(500).json({
@@ -137,5 +139,69 @@ router.get('/hola', async (req, res) => {
   }
 });
 
+router.get('/:userId', async (req, res) => {
+  try {
+    const user = req.params.userId;
+    const tweetsOptions = {
+      method: 'GET',
+      url: 'https://twitter-api47.p.rapidapi.com/v2/user/tweets',
+      params: { userId: user },
+      headers: {
+        'x-rapidapi-key': process.env.RAPID_API_KEY,
+        'x-rapidapi-host': 'twitter-api47.p.rapidapi.com'
+      }
+    };
+
+    const tweetsResponse = await axios.request(tweetsOptions);
+    console.log(tweetsResponse.data.tweets);
+
+    const tweets = tweetsResponse.data.tweets
+      .filter(tweet => tweet?.content?.entryType !== 'TimelineTimelineModule') // Filtra los tweets válidos
+      .map(tweet => {
+        const tweetResult = tweet?.content?.itemContent?.tweet_results?.result;
+        const legacy = tweetResult?.legacy;
+
+        if (!legacy) return null; // Manejo de tweets malformados
+
+        return {
+          id: tweetResult.rest_id,
+          created_at: legacy.created_at,
+          text: legacy.full_text,
+          claim: legacy.full_text.substring(0, 100) + '...', // Primeros 100 caracteres como claim
+          trustScore: Math.floor(Math.random() * 30) + 70, // Puntuación aleatoria entre 70 y 100
+          verified: Boolean(tweetResult.is_blue_verified || legacy.verified),
+          user: {
+            name: legacy.user?.name || 'Unknown',
+            username: legacy.user?.screen_name || 'Unknown',
+            profile_image_url: legacy.user?.profile_image_url_https || ''
+          },
+          metrics: {
+            retweet_count: legacy.retweet_count || 0,
+            favorite_count: legacy.favorite_count || 0,
+            reply_count: legacy.reply_count || 0
+          },
+          entities: legacy.entities || {},
+          aiAnalysis: `Analysis of tweet: "${legacy.full_text.substring(0, 50)}..."`, // Análisis AI como placeholder
+          hasMedia: Boolean(legacy.media?.length),
+          urls: legacy.entities?.urls || []
+        };
+      })
+      .filter(tweet => tweet !== null); // Filtra los tweets nulos
+
+    res.json({
+      tweets,
+      meta: {
+        total: tweets.length,
+        user_id: user
+      }
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      error: 'Error fetching tweets',
+      message: error.message
+    });
+  }
+});
 
 module.exports = router;

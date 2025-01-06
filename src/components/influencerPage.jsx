@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, TrendingUp } from 'lucide-react';
 import Header from './header';
+import axios from 'axios';
 
 const InfluencerProfile = ({ influencer }) => {
   const [activeTab, setActiveTab] = useState('Claims Analysis');
@@ -8,9 +9,25 @@ const InfluencerProfile = ({ influencer }) => {
   const [verificationStatus, setVerificationStatus] = useState('All Statuses');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('Date');
+  const [tweets, setTweets] = useState([])
 
   const categories = ['All Categories', 'Sleep', 'Performance', 'Hormones', 'Nutrition', 'Exercise', 'Stress', 'Cognition', 'Motivation', 'Recovery', 'Mental Health'];
   const statuses = ['All Statuses', 'Verified', 'Questionable', 'Debunked'];
+
+  useEffect(() => {
+    const fetchTweets = async () => {
+      try {
+        const response = await axios.get(`http://localhost:3000/users/${influencer.id}`);  // Ajusta el endpoint según sea necesario
+        console.log(response.data)
+        setTweets(response.data.tweets);  // Suponiendo que la API devuelve la lista completa de influencers
+      } catch (error) {
+        console.error("Error fetching influencers:", error.message);
+      }
+    };
+
+    fetchTweets();
+  }, [influencer.username]);
+  console.log(tweets)
 
   const claims = [
     {
@@ -33,7 +50,7 @@ const InfluencerProfile = ({ influencer }) => {
 
   return (
     <div className="w-full min-h-screen bg-gray-900 text-white">
-        <Header />
+      <Header />
       <div className="flex items-start gap-6 mb-8">
         <img src={influencer.avatar} alt={influencer.name} className="rounded-full w-24 h-24" />
         <div>
@@ -104,9 +121,8 @@ const InfluencerProfile = ({ influencer }) => {
               <button
                 key={category}
                 onClick={() => setSelectedCategory(category)}
-                className={`px-3 py-1 rounded-full text-sm ${
-                  selectedCategory === category ? 'bg-emerald-500 text-white' : 'bg-gray-700 text-gray-400'
-                }`}
+                className={`px-3 py-1 rounded-full text-sm ${selectedCategory === category ? 'bg-emerald-500 text-white' : 'bg-gray-700 text-gray-400'
+                  }`}
               >
                 {category}
               </button>
@@ -120,9 +136,8 @@ const InfluencerProfile = ({ influencer }) => {
               <button
                 key={status}
                 onClick={() => setVerificationStatus(status)}
-                className={`px-3 py-1 rounded-full text-sm ${
-                  verificationStatus === status ? 'bg-emerald-500 text-white' : 'bg-gray-700 text-gray-400'
-                }`}
+                className={`px-3 py-1 rounded-full text-sm ${verificationStatus === status ? 'bg-emerald-500 text-white' : 'bg-gray-700 text-gray-400'
+                  }`}
               >
                 {status}
               </button>
@@ -139,12 +154,16 @@ const InfluencerProfile = ({ influencer }) => {
         </div>
 
         <div className="space-y-6">
-          {claims.map(claim => (
+          {tweets.map(claim => (
             <div key={claim.id} className="border-b border-gray-700 pb-6">
               <div className="flex items-start justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <span className="bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded text-sm">verified</span>
-                  <span className="text-gray-400">{claim.date}</span>
+                  {claim.verified && (
+                    <span className="bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded text-sm">
+                      Verified
+                    </span>
+                  )}
+                  <span className="text-gray-400">{claim.created_at}</span>
                 </div>
                 <div className="text-emerald-400">{claim.trustScore}%</div>
               </div>
@@ -154,11 +173,12 @@ const InfluencerProfile = ({ influencer }) => {
                   <span className="w-4 h-4 rounded-full bg-emerald-400/20 flex items-center justify-center text-emerald-400">i</span>
                   AI Analysis
                 </div>
-                <p className="text-gray-400">{claim.analysis}</p>
+                <p className="text-gray-400">{claim.text}</p>
                 <button className="text-emerald-400 text-sm mt-2">View Research ↗</button>
               </div>
             </div>
           ))}
+
         </div>
       </div>
     </div>

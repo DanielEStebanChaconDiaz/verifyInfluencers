@@ -11,7 +11,7 @@ const InfluencerLeaderboard = () => {
   const [influencers, setInfluencers] = useState([]);
   
   const categories = ['All', 'Nutrition', 'Fitness', 'Medicine', 'Mental Health'];
-
+  console.log(influencers)
   // Fetch influencers data on component mount
   useEffect(() => {
     const fetchInfluencers = async () => {
@@ -101,9 +101,9 @@ const InfluencerLeaderboard = () => {
           <tbody>
             {filteredInfluencers.map((inf, index) => (
               <tr 
-                key={inf.id} 
-                className="border-t border-gray-700 cursor-pointer hover:bg-gray-800"
-                onClick={() => setSelectedInfluencer(inf)}
+              key={inf.id} 
+              className="border-t border-gray-700 cursor-pointer hover:bg-gray-800"
+              onClick={() => setSelectedInfluencer(inf)}
               >
                 <td className="p-4">#{index + 1}</td>
                 <td className="p-4 flex items-center gap-3">
