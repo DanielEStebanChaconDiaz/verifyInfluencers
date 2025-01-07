@@ -11,20 +11,29 @@ const InfluencerLeaderboard = () => {
   const [influencers, setInfluencers] = useState([]);
   
   const categories = ['All', 'Nutrition', 'Fitness', 'Medicine', 'Mental Health'];
-  console.log(influencers)
+
   // Fetch influencers data on component mount
   useEffect(() => {
     const fetchInfluencers = async () => {
       try {
-        const response = await axios.get('http://localhost:3000/users/hola');  // Ajusta el endpoint según sea necesario
-        setInfluencers(response.data);  // Suponiendo que la API devuelve la lista completa de influencers
+        const response = await axios.get('http://localhost:3000/users/hola');
+        setInfluencers(response.data);
       } catch (error) {
         console.error("Error fetching influencers:", error.message);
       }
     };
 
     fetchInfluencers();
-  }, []); // Empty dependency array means this effect runs once when the component mounts
+  }, []);
+
+  // Calculate statistics from loaded influencers
+  const stats = {
+    activeInfluencers: influencers.length,
+    totalClaims: influencers.reduce((sum, inf) => sum + (inf.claims || 0), 0),
+    averageTrustScore: influencers.length > 0 
+      ? (influencers.reduce((sum, inf) => sum + (inf.trustScore || 0), 0) / influencers.length).toFixed(1)
+      : 0
+  };
 
   if (selectedInfluencer) {
     return (
@@ -48,15 +57,15 @@ const InfluencerLeaderboard = () => {
 
       <div className="grid grid-cols-3 gap-4 mb-8">
         <div className="bg-gray-800/50 p-4 rounded-lg">
-          <div className="text-2xl font-bold text-emerald-400">1,234</div>
+          <div className="text-2xl font-bold text-emerald-400">{stats.activeInfluencers}</div>
           <div className="text-gray-400">Active Influencers</div>
         </div>
         <div className="bg-gray-800/50 p-4 rounded-lg">
-          <div className="text-2xl font-bold text-emerald-400">25,431</div>
+          <div className="text-2xl font-bold text-emerald-400">{stats.totalClaims}</div>
           <div className="text-gray-400">Claims Verified</div>
         </div>
         <div className="bg-gray-800/50 p-4 rounded-lg">
-          <div className="text-2xl font-bold text-emerald-400">85.7%</div>
+          <div className="text-2xl font-bold text-emerald-400">{stats.averageTrustScore}%</div>
           <div className="text-gray-400">Average Trust Score</div>
         </div>
       </div>
@@ -101,9 +110,9 @@ const InfluencerLeaderboard = () => {
           <tbody>
             {filteredInfluencers.map((inf, index) => (
               <tr 
-              key={inf.id} 
-              className="border-t border-gray-700 cursor-pointer hover:bg-gray-800"
-              onClick={() => setSelectedInfluencer(inf)}
+                key={inf.id} 
+                className="border-t border-gray-700 cursor-pointer hover:bg-gray-800"
+                onClick={() => setSelectedInfluencer(inf)}
               >
                 <td className="p-4">#{index + 1}</td>
                 <td className="p-4 flex items-center gap-3">
