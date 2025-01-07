@@ -1,4 +1,3 @@
-// services/influencerService.js
 const twitterService = require('./twitterService');
 const pubmedService = require('./pubmedService');
 
@@ -8,14 +7,44 @@ class InfluencerService {
         this.processingQueue = new Set(); // Control de usuarios en procesamiento
     }
 
+    async extractClaimsFromPost(content) {
+        try {
+            // Basic implementation to extract medical claims from post content
+            // You might want to enhance this with more sophisticated NLP processing
+            const sentences = content.split(/[.!?]+/).filter(sentence => sentence.trim().length > 0);
+            
+            const claims = sentences.map(sentence => ({
+                text: sentence.trim(),
+                type: 'medical',
+                confidence: 0.8, // Default confidence score
+                source: 'text-extraction'
+            }));
+
+            return claims.filter(claim => {
+                // Basic filtering of medical claims
+                // You might want to add more sophisticated filtering logic
+                const medicalTerms = [
+                    'health', 'medical', 'disease', 'treatment', 'cure', 
+                    'study', 'research', 'clinical', 'patient', 'therapy',
+                    'medicine', 'drug', 'vaccine', 'symptom', 'condition'
+                ];
+                
+                return medicalTerms.some(term => 
+                    claim.text.toLowerCase().includes(term.toLowerCase())
+                );
+            });
+        } catch (error) {
+            console.error('Error extracting claims:', error);
+            return [];
+        }
+    }
+
     async getInfluencerContent(influencerName, timeRange) {
         try {
-            // Verificar si el usuario está en proceso
             if (this.processingQueue.has(influencerName)) {
                 throw new Error('This influencer is currently being processed');
             }
 
-            // Verificar cache
             const cacheKey = `${influencerName}-${timeRange}`;
             if (this.userCache.has(cacheKey)) {
                 return this.userCache.get(cacheKey);
@@ -23,13 +52,10 @@ class InfluencerService {
 
             this.processingQueue.add(influencerName);
 
-            // Obtener tweets
             const tweets = await twitterService.getUserTweets(influencerName, timeRange);
             
-            // Guardar en cache
             this.userCache.set(cacheKey, tweets);
             
-            // Limpiar después de 5 minutos
             setTimeout(() => {
                 this.userCache.delete(cacheKey);
             }, 5 * 60 * 1000);
@@ -45,7 +71,7 @@ class InfluencerService {
 
     async analyzePosts(posts) {
         const analysis = [];
-        const batchSize = 5; // Procesar en lotes para evitar sobrecarga
+        const batchSize = 5;
         
         for (let i = 0; i < posts.length; i += batchSize) {
             const batch = posts.slice(i, i + batchSize);
@@ -57,14 +83,13 @@ class InfluencerService {
                         return verifiedClaims;
                     } catch (error) {
                         console.error(`Error analyzing post ${post.id}:`, error);
-                        return []; // Skip problematic posts
+                        return [];
                     }
                 })
             );
             
             analysis.push(...batchAnalysis.flat());
             
-            // Pequeña pausa entre lotes
             if (i + batchSize < posts.length) {
                 await new Promise(resolve => setTimeout(resolve, 1000));
             }

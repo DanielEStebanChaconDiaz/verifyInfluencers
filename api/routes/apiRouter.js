@@ -121,6 +121,8 @@ router.post('/analyze-influencer', async (req, res) => {
             timeRange
         );
 
+        console.log(posts);
+
         // Si no hay posts para analizar
         if (posts.length === 0) {
             return res.json({
