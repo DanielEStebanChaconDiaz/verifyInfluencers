@@ -38,7 +38,7 @@ const ResearchDashboard = () => {
     const handleStartResearch = async () => {
         setIsAnalyzing(true);
         try {
-            const response = await axios.post('http://localhost:3000/api/analyze', {
+            const response = await axios.post('https://verify-influencers-28rr-btcud4qop.vercel.app/api/analyze', {
                 text: notes,  // Enviar las notas como texto para el análisis
                 verifyJournals,
                 selectedJournals: Array.from(selectedJournals),
