@@ -1,31 +1,91 @@
+// routes/apiRouter.js
 const express = require('express');
 const router = express.Router();
 const pubmedService = require('../services/pubmedService');
 
 router.post('/analyze', async (req, res) => {
     try {
-        const { text } = req.body;
-        
+        const { 
+            text, 
+            verifyJournals = false,
+            selectedJournals = [] 
+        } = req.body;
+
+        // Validar que text existe y es un string
+        if (!text || typeof text !== 'string') {
+            return res.status(400).json({
+                success: false,
+                error: 'Text is required and must be a string'
+            });
+        }
+
         // Extraer claims del texto
         const claims = extractClaims(text);
         
-        // Verificar cada claim
-        const verifiedClaims = await Promise.all(
-            claims.map(async (claim) => {
-                const verification = await pubmedService.verifyMedicalClaim(claim.text);
-                return {
-                    ...claim,
-                    verification
-                };
-            })
-        );
+        // Si no hay claims para verificar, retornar resultado temprano
+        if (claims.length === 0) {
+            return res.json({
+                success: true,
+                data: {
+                    originalText: text,
+                    claims: [],
+                    summary: {
+                        totalClaims: 0,
+                        verifiedCount: 0,
+                        verificationRate: 0,
+                        averageConfidence: 0
+                    }
+                }
+            });
+        }
+
+        // Verificar claims solo si verifyJournals es true
+        let verifiedClaims;
+        if (verifyJournals && selectedJournals.length > 0) {
+            verifiedClaims = await Promise.all(
+                claims.map(async (claim) => {
+                    try {
+                        const verification = await pubmedService.verifyMedicalClaim(claim.text);
+                        return {
+                            ...claim,
+                            verification
+                        };
+                    } catch (error) {
+                        console.error('Error verifying claim:', error);
+                        return {
+                            ...claim,
+                            verification: {
+                                verified: false,
+                                confidence: 0,
+                                supportingEvidence: [],
+                                error: 'Verification failed'
+                            }
+                        };
+                    }
+                })
+            );
+        } else {
+            // Si la verificación está desactivada, retornar claims sin verificación
+            verifiedClaims = claims.map(claim => ({
+                ...claim,
+                verification: {
+                    verified: false,
+                    confidence: 0,
+                    supportingEvidence: [],
+                    verificationSkipped: true
+                }
+            }));
+        }
+
+        const summary = generateSummary(verifiedClaims);
 
         res.json({
             success: true,
             data: {
                 originalText: text,
                 claims: verifiedClaims,
-                summary: generateSummary(verifiedClaims)
+                summary,
+                verificationEnabled: verifyJournals
             }
         });
 
@@ -33,12 +93,17 @@ router.post('/analyze', async (req, res) => {
         console.error('Error in verification:', error);
         res.status(500).json({
             success: false,
-            error: error.message
+            error: error.message || 'Internal server error'
         });
     }
 });
 
+// Función mejorada para extraer claims
 function extractClaims(text) {
+    if (!text || typeof text !== 'string') {
+        return [];
+    }
+
     const MEDICAL_KEYWORDS = [
         'treatment', 'cure', 'prevent', 'heal', 'therapy',
         'medicine', 'drug', 'symptom', 'disease', 'condition',
@@ -46,8 +111,12 @@ function extractClaims(text) {
         'evidence suggests', 'scientists found'
     ];
 
-    const sentences = text.split(/[.!?]+/).filter(s => s.trim());
-    
+    // Dividir el texto en oraciones de manera más robusta
+    const sentences = text
+        .split(/[.!?]+/)
+        .map(s => s.trim())
+        .filter(s => s.length > 0);
+
     return sentences
         .filter(sentence => {
             const lowercased = sentence.toLowerCase();
@@ -56,24 +125,38 @@ function extractClaims(text) {
             );
         })
         .map(sentence => ({
-            text: sentence.trim(),
+            text: sentence,
             type: 'medical',
             extractedDate: new Date().toISOString()
         }));
 }
 
-// Función auxiliar para generar resumen
+// Función mejorada para generar resumen
 function generateSummary(verifiedClaims) {
     const totalClaims = verifiedClaims.length;
-    const verifiedCount = verifiedClaims.filter(c => c.verification.verified).length;
     
+    if (totalClaims === 0) {
+        return {
+            totalClaims: 0,
+            verifiedCount: 0,
+            verificationRate: 0,
+            averageConfidence: 0
+        };
+    }
+
+    const verifiedCount = verifiedClaims.filter(c => 
+        c.verification && c.verification.verified
+    ).length;
+
+    const confidenceSum = verifiedClaims.reduce((acc, curr) => 
+        acc + (curr.verification ? curr.verification.confidence : 0), 0
+    );
+
     return {
         totalClaims,
         verifiedCount,
-        verificationRate: totalClaims > 0 ? (verifiedCount / totalClaims) * 100 : 0,
-        averageConfidence: totalClaims > 0 
-            ? verifiedClaims.reduce((acc, curr) => acc + curr.verification.confidence, 0) / totalClaims 
-            : 0
+        verificationRate: (verifiedCount / totalClaims) * 100,
+        averageConfidence: confidenceSum / totalClaims
     };
 }
 
