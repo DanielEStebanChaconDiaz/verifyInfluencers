@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Header from './header';
 import axios from 'axios';
+
 const ResearchDashboard = () => {
     const [selectedTimeRange, setSelectedTimeRange] = useState('lastMonth');
     const [includeRevenue, setIncludeRevenue] = useState(false);
@@ -11,6 +12,7 @@ const ResearchDashboard = () => {
     const [notes, setNotes] = useState('');
     const [analysisResults, setAnalysisResults] = useState(null);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [error, setError] = useState(null);
     const [selectedJournals, setSelectedJournals] = useState(new Set([
         'PubMed Central'
     ]));
@@ -37,108 +39,153 @@ const ResearchDashboard = () => {
 
     const handleStartResearch = async () => {
         setIsAnalyzing(true);
+        setError(null);
+        
         try {
-            const response = await axios.post('https://verifyinfluencers.onrender.com/api/analyze', {
-                text: notes,  // Enviar las notas como texto para el análisis
+            const response = await axios.post('https://verifyinfluencers.onrender.com/api/analyze-influencer', {
+                influencerName,
+                timeRange: selectedTimeRange,
+                claimsCount,
+                productsCount,
+                includeRevenue,
                 verifyJournals,
                 selectedJournals: Array.from(selectedJournals),
+                notes,
+                config: {
+                    includeProducts: productsCount > 0,
+                    includeRevenue,
+                    verifyJournals,
+                }
             });
 
-            // Aquí consumes la respuesta de la API
-            const analysisData = response.data;
-
-            // Ahora puedes trabajar con el resultado de análisis como desees
-            console.log('Resultado del análisis:', analysisData);
-
-            // Puedes actualizar el estado o tomar otras acciones, por ejemplo:
-            setAnalysisResults(analysisData);  // Suponiendo que deseas mostrar el resultado en el frontend
+            setAnalysisResults(response.data);
         } catch (error) {
             console.error('Error in research:', error);
-            // Mostrar un mensaje de error si es necesario
+            setError(error.response?.data?.message || 'An error occurred during analysis');
         } finally {
-            setIsAnalyzing(false);  // Finaliza el análisis (cambia el estado)
+            setIsAnalyzing(false);
         }
     };
-
-
-
     // Add this component to display the results
     const AnalysisResults = ({ results, onClose }) => {
+        if (!results || !results.data) return null;
+    
+        const { data } = results;
+        const { analysis, influencerName, timeRange, verificationEnabled } = data;
+        if (!analysis) {
+            return <div>No hay análisis disponibles</div>;
+          }
+        const { claims, platforms, summary, topClaims } = analysis;
+    
         return (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                <div className="bg-gray-800 text-white p-6 rounded-lg shadow-lg w-11/12 max-w-4xl max-h-[80%] overflow-y-auto">
-                    <h3 className="text-2xl font-bold mb-4 text-green-400">Resultados del Análisis</h3>
-        
-                    <p className="mb-4">
-                        <span className="font-semibold text-green-300">Texto original:</span> {results.data.originalText}
-                    </p>
-        
-                    <h4 className="text-xl font-semibold mt-4 text-green-400">Reclamos:</h4>
-                    {results.data.claims.map((claim, index) => (
-                        <div key={index} className="mb-4 p-4 border border-gray-700 rounded">
-                            <p><span className="font-semibold text-green-300">Texto:</span> {claim.text}</p>
-                            <p><span className="font-semibold text-green-300">Tipo:</span> {claim.type}</p>
-                            <p>
-                                <span className="font-semibold text-green-300">Fecha de extracción:</span>{' '}
-                                {new Date(claim.extractedDate).toLocaleString()}
-                            </p>
-        
-                            <h5 className="text-lg font-semibold mt-2 text-green-400">Verificación</h5>
-                            <p><span className="font-semibold text-green-300">Verificado:</span> {claim.verification.verified ? 'Sí' : 'No'}</p>
-                            <p><span className="font-semibold text-green-300">Confianza:</span> {claim.verification.confidence}%</p>
-                            <p>
-                                <span className="font-semibold text-green-300">Última verificación:</span>{' '}
-                                {new Date(claim.verification.lastChecked).toLocaleString()}
-                            </p>
-        
-                            <h6 className="text-md font-semibold mt-2 text-green-400">Evidencia de apoyo:</h6>
-                            <ul className="list-disc list-inside">
-                                {claim.verification.supportingEvidence.map((evidence, evIndex) => (
-                                    <li key={evIndex} className="mb-2">
-                                        <p><span className="font-semibold text-green-300">Título:</span> {evidence.title}</p>
-                                        <p>
-                                            <span className="font-semibold text-green-300">URL:</span>{' '}
-                                            <a
-                                                href={evidence.url}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="text-green-400 underline"
-                                            >
-                                                {evidence.url}
-                                            </a>
-                                        </p>
-                                        <p><span className="font-semibold text-green-300">Fecha de publicación:</span> {evidence.pubDate}</p>
-                                        <p>
-                                            <span className="font-semibold text-green-300">Puntaje de relevancia:</span>{' '}
-                                            {evidence.relevanceScore}
-                                        </p>
-                                    </li>
-                                ))}
-                            </ul>
+                <div className="bg-gray-800 text-white p-6 rounded-lg shadow-lg w-11/12 max-w-4xl max-h-[90vh] overflow-y-auto">
+                    <div className="sticky top-0 bg-gray-800 pb-4 flex justify-between items-center">
+                        <h3 className="text-2xl font-bold text-green-400">Analysis Results</h3>
+                        <button 
+                            onClick={onClose}
+                            className="bg-gray-700 p-2 rounded hover:bg-gray-600"
+                        >
+                            Close
+                        </button>
+                    </div>
+    
+                    {/* Influencer Information */}
+                    <div className="mb-6 p-4 bg-gray-700/50 rounded-lg">
+                        <h4 className="text-xl font-semibold text-green-400 mb-2">Influencer Details</h4>
+                        <p><span className="font-semibold text-green-300">Name:</span> {influencerName}</p>
+                        <p><span className="font-semibold text-green-300">Time Range:</span> {timeRange}</p>
+                        <p><span className="font-semibold text-green-300">Platforms:</span> {platforms.join(', ')}</p>
+                    </div>
+    
+                    {/* Summary Statistics */}
+                    <div className="mb-6 p-4 bg-gray-700/50 rounded-lg">
+                        <h4 className="text-xl font-semibold text-green-400 mb-4">Analysis Summary</h4>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                            <div>
+                                <p className="text-green-300 font-semibold">Total Claims</p>
+                                <p className="text-2xl">{summary.totalClaims}</p>
+                            </div>
+                            <div>
+                                <p className="text-green-300 font-semibold">Verified Claims</p>
+                                <p className="text-2xl">{summary.verifiedCount}</p>
+                            </div>
+                            <div>
+                                <p className="text-green-300 font-semibold">Verification Rate</p>
+                                <p className="text-2xl">{summary.verificationRate}%</p>
+                            </div>
+                            <div>
+                                <p className="text-green-300 font-semibold">Avg. Confidence</p>
+                                <p className="text-2xl">{summary.averageConfidence.toFixed(1)}%</p>
+                            </div>
                         </div>
-                    ))}
-        
-                    <h4 className="text-xl font-semibold mt-4 text-green-400">Resumen</h4>
-                    <p>
-                        <span className="font-semibold text-green-300">Total de reclamos:</span>{' '}
-                        {results.data.summary.totalClaims}
-                    </p>
-                    <p>
-                        <span className="font-semibold text-green-300">Reclamos verificados:</span>{' '}
-                        {results.data.summary.verifiedCount}
-                    </p>
-                    <p>
-                        <span className="font-semibold text-green-300">Tasa de verificación:</span>{' '}
-                        {results.data.summary.verificationRate}%
-                    </p>
-                    <p>
-                        <span className="font-semibold text-green-300">Confianza promedio:</span>{' '}
-                        {results.data.summary.averageConfidence}%
-                    </p>
+                        <div className="grid grid-cols-3 gap-4">
+                            <div>
+                                <p className="text-green-300 font-semibold">Likes</p>
+                                <p className="text-xl">{summary.totalEngagement.likes}</p>
+                            </div>
+                            <div>
+                                <p className="text-green-300 font-semibold">Retweets</p>
+                                <p className="text-xl">{summary.totalEngagement.retweets}</p>
+                            </div>
+                            <div>
+                                <p className="text-green-300 font-semibold">Replies</p>
+                                <p className="text-xl">{summary.totalEngagement.replies}</p>
+                            </div>
+                        </div>
+                    </div>
+    
+                    {/* Claims Analysis */}
+                    <div className="mb-6">
+                        <h4 className="text-xl font-semibold text-green-400 mb-4">Claims Analysis</h4>
+                        {claims.map((claim, index) => (
+                            <div key={index} className="mb-4 p-4 bg-gray-700/50 rounded-lg">
+                                <p className="mb-2"><span className="font-semibold text-green-300">Claim:</span> {claim.text}</p>
+                                <p className="mb-2"><span className="font-semibold text-green-300">Type:</span> {claim.type}</p>
+                                <p className="mb-2"><span className="font-semibold text-green-300">Confidence:</span> {claim.confidence * 100}%</p>
+                                <p className="mb-2"><span className="font-semibold text-green-300">Source:</span> {claim.source}</p>
+                                {claim.verification && (
+                                    <div className="mt-2">
+                                        <p className="font-semibold text-green-300">Verification Status:</p>
+                                        <div className="ml-4 mt-1">
+                                            <p>Status: {claim.verification.verified ? 'Verified' : 'Not Verified'}</p>
+                                            {claim.verification.supportingEvidence && (
+                                                <div className="mt-2">
+                                                    <p className="font-semibold text-green-300">Supporting Evidence:</p>
+                                                    <ul className="list-disc ml-4">
+                                                        {claim.verification.supportingEvidence.map((evidence, evIndex) => (
+                                                            <li key={evIndex} className="mt-1">
+                                                                {evidence.title} ({evidence.relevanceScore}% relevance)
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+    
+                    {/* Top Claims */}
+                    <div className="p-4 bg-gray-700/50 rounded-lg">
+                        <h4 className="text-xl font-semibold text-green-400 mb-4">Top Claims by Engagement</h4>
+                        {topClaims.map((claim, index) => (
+                            <div key={index} className="mb-4 last:mb-0">
+                                <p className="mb-1"><span className="font-semibold text-green-300">#{index + 1}:</span> {claim.text}</p>
+                                {claim.engagement && (
+                                    <p className="text-sm text-gray-400">
+                                        Engagement: {claim.engagement.likes} likes, {claim.engagement.retweets} retweets, {claim.engagement.replies} replies
+                                    </p>
+                                )}
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </div>
         );
-    }        
+    };
 
     const handleNumberInput = (setter) => (e) => {
         const value = e.target.value;
@@ -317,7 +364,7 @@ const ResearchDashboard = () => {
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
                     <div className="text-white text-center">
                         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-emerald-500 mx-auto mb-4"></div>
-                        <p className="text-lg">Analizando contenido...</p>
+                        <p className="text-lg">Analyzing content...</p>
                     </div>
                 </div>
             )}
