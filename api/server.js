@@ -14,7 +14,7 @@ const port = process.env.PORT || 3000;
 
 app.use(express.json());
 app.use(cors({
-    origin: process.env.CLIENT_URL || 'http://localhost:5000',
+    origin: process.env.CLIENT_URL || 'https://verifyinfluencers.netlify.app',
     credentials: true
 }));
 
