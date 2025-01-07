@@ -14,7 +14,7 @@ const port = process.env.PORT || 3000;
 
 // Configura CORS para permitir solicitudes de tu frontend en Netlify
 app.use(cors({
-    origin: process.env.CLIENT_URL || 'https://verifyinfluencers.netlify.app',
+    origin: '*',
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
