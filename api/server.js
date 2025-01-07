@@ -22,7 +22,7 @@ app.use(cors({
 
 // Manejando solicitudes OPTIONS de manera explícita para CORS
 app.options('*', cors({
-    origin: process.env.CLIENT_URL || 'https://verifyinfluencers.netlify.app',
+    origin:'*',
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
