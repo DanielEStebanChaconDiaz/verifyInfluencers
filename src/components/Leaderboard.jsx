@@ -16,7 +16,7 @@ const InfluencerLeaderboard = () => {
   useEffect(() => {
     const fetchInfluencers = async () => {
       try {
-        const response = await axios.get('https://verify-influencers-28rr-btcud4qop.vercel.app/users/hola');
+        const response = await axios.get('https://verifyinfluencers.onrender.com/users/hola');
         setInfluencers(response.data);
       } catch (error) {
         console.error("Error fetching influencers:", error.message);

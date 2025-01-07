@@ -15,7 +15,7 @@ const Login = () => {
     setLoading(true);
 
     try {
-      const response = await axios.post('https://verify-influencers-28rr-btcud4qop.vercel.app/users/login', { email, password });
+      const response = await axios.post('https://verifyinfluencers.onrender.com/users/login', { email, password });
       localStorage.setItem('token', response.data.token);
       navigate('/leaderboard');
     } catch (err) {
@@ -107,7 +107,7 @@ const Register = () => {
     
     setLoading(true);
     try {
-      const response = await axios.post('https://verify-influencers-28rr-btcud4qop.vercel.app/users/register', {
+      const response = await axios.post('https://verifyinfluencers.onrender.com/users/register', {
         name: formData.name,
         email: formData.email,
         password: formData.password

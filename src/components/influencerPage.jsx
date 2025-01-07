@@ -17,7 +17,7 @@ const InfluencerProfile = ({ influencer }) => {
   useEffect(() => {
     const fetchTweets = async () => {
       try {
-        const response = await axios.get(`https://verify-influencers-28rr-btcud4qop.vercel.app/users/${influencer.id}`);  // Ajusta el endpoint según sea necesario
+        const response = await axios.get(`https://verifyinfluencers.onrender.com/users/${influencer.id}`);  // Ajusta el endpoint según sea necesario
         console.log(response.data)
         setTweets(response.data.tweets);  // Suponiendo que la API devuelve la lista completa de influencers
       } catch (error) {
