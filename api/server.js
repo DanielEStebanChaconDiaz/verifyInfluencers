@@ -12,17 +12,25 @@ const apiRoute = require('./routes/apiRouter');
 const app = express();
 const port = process.env.PORT || 3000;
 
-app.use(express.json());
+// Configura CORS para permitir solicitudes de tu frontend en Netlify
 app.use(cors({
     origin: process.env.CLIENT_URL || 'https://verifyinfluencers.netlify.app',
-    credentials: true
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
+// Manejando solicitudes OPTIONS de manera explícita para CORS
+app.options('*', cors({
+    origin: process.env.CLIENT_URL || 'https://verifyinfluencers.netlify.app',
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+
+app.use(express.json());
 app.use('/users', userRoute);
-
 app.use('/api', apiRoute);
-
-
 
 app.listen(port, () => {
     console.log(`Servidor funcionando en http://localhost:${port}`);
