@@ -3,7 +3,6 @@ const express = require('express');
 const router = express.Router();
 const pubmedService = require('../services/pubmedService');
 const influencerService = require('../services/influencerService');
-const pubmedService = require('../services/pubmedService');
 
 router.post('/analyze', async (req, res) => {
     try {
