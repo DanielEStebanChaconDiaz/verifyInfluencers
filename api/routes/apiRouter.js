@@ -2,6 +2,8 @@
 const express = require('express');
 const router = express.Router();
 const pubmedService = require('../services/pubmedService');
+const influencerService = require('../services/influencerService');
+const pubmedService = require('../services/pubmedService');
 
 router.post('/analyze', async (req, res) => {
     try {
@@ -91,6 +93,68 @@ router.post('/analyze', async (req, res) => {
 
     } catch (error) {
         console.error('Error in verification:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message || 'Internal server error'
+        });
+    }
+});
+
+router.post('/analyze-influencer', async (req, res) => {
+    try {
+        const { 
+            influencerName,
+            timeRange = 'lastWeek',
+            verifyJournals = false,
+            selectedJournals = []
+        } = req.body;
+
+        if (!influencerName) {
+            return res.status(400).json({
+                success: false,
+                error: 'Influencer name is required'
+            });
+        }
+
+        // Obtener contenido del influencer
+        const posts = await influencerService.getInfluencerContent(
+            influencerName,
+            timeRange
+        );
+
+        // Si no hay posts para analizar
+        if (posts.length === 0) {
+            return res.json({
+                success: true,
+                data: {
+                    influencerName,
+                    posts: [],
+                    summary: {
+                        totalPosts: 0,
+                        totalClaims: 0,
+                        verifiedCount: 0,
+                        verificationRate: 0,
+                        averageConfidence: 0
+                    }
+                }
+            });
+        }
+
+        // Analizar posts y verificar claims
+        const analysis = await influencerService.analyzePosts(posts);
+
+        res.json({
+            success: true,
+            data: {
+                influencerName,
+                timeRange,
+                analysis,
+                verificationEnabled: verifyJournals
+            }
+        });
+
+    } catch (error) {
+        console.error('Error in influencer analysis:', error);
         res.status(500).json({
             success: false,
             error: error.message || 'Internal server error'
